@@ -71,6 +71,13 @@ namespace EVMC4U
         [Header("VRM Loader Option")]
         public bool enableAutoLoadVRM = true;        //VRMの自動読み込みの有効可否
 
+        [Header("VRM First Person")] 
+        public bool VRMFirstPersonSetupEnable = false;  //VRMFirstPersonによるレイヤ自動設定の有効可否
+        public Camera FirstPersonCamera = null;  //VR視点用として使用するカメラ
+        public LayerMask FirstPersonCameraLayer = 0;  //VR視点用カメラで有効化するレイヤ(VRMFirstPrsonOnly等)
+        public LayerMask ThirdPersonCameraLayer = 0;  //VR視点用カメラ以外で有効化するレイヤ(VRMThirdPersonOnly等)
+        
+
         [Header("Other Option")]
         public bool HideInUncalibrated = false; //キャリブレーション出来ていないときは隠す
         public bool SyncCalibrationModeWithScaleOffsetSynchronize = true; //キャリブレーションモードとスケール設定を連動させる
@@ -678,6 +685,31 @@ namespace EVMC4U
                 LoadedModelParent.name = "LoadedModelParent";
                 //その下にモデルをぶら下げる
                 Model.transform.SetParent(LoadedModelParent.transform, false);
+
+                //VRMFirstPersonによるレイヤセットアップ
+                if (VRMFirstPersonSetupEnable == true && FirstPersonCamera != null)
+                {
+                    var FirstPersonModel = Model.GetComponent<VRMFirstPerson>();
+
+                    if (FirstPersonModel != null)
+                    {
+                        FirstPersonModel.Setup();
+
+                        //シーン内の全カメラのCullingMaskの設定変更
+                        foreach (var camera in FindObjectsOfType<Camera>())
+                        {
+                            //VR視点用カメラにFirstPersonCameraLayerの追加、その他カメラにThirdPersonCameraLayerの追加
+                            camera.cullingMask |= (camera == FirstPersonCamera)
+                                ? ~FirstPersonCameraLayer
+                                : ~ThirdPersonCameraLayer;
+
+                            //VR視点用カメラからThirdPersonCameraLayerの削除、その他カメラからFirstPersonCameraLayerの追加
+                            camera.cullingMask &= (camera == FirstPersonCamera)
+                                ? ~ThirdPersonCameraLayer
+                                : ~FirstPersonCameraLayer;
+                        }
+                    }
+                }
 
                 vrmImporter.EnableUpdateWhenOffscreen();
                 vrmImporter.ShowMeshes();
